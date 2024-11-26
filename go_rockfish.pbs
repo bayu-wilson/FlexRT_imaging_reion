@@ -1,0 +1,112 @@
+#!/bin/bash                    
+#SBATCH --job-name="FlexRT_tests"          
+#SBATCH --output="dot_out/FlexRT_tests.%N.out"
+#SBATCH --account=TG-PHY210041
+#SBATCH --partition=shared
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=48
+####SBATCH --mem=128Gb   
+#SBATCH --mem=210Gb   
+#SBATCH --export=ALL        
+#SBATCH -t 12:00:00   
+#SBATCH --mail-user=bwils033@ucr.edu
+#SBATCH --mail-type=all
+
+####!/bin/bash
+####SBATCH --job-name=bayu_subgrid
+####SBATCH --partition=bigmem
+####SBATCH --output="dot_out/%N.out"
+####SBATCH -N 1
+####SBATCH --time=48:0:0
+####SBATCH --ntasks-per-node=48
+####SBATCH --mem-per-cpu=31GB
+####SBATCH -A phy210041_bigmem
+####SBATCH --export=ALL
+####SBATCH --mail-user=bwils033@ucr.edu
+####SBATCH --mail-type=all
+
+export OMP_NUM_THREADS=48
+export KMP_AFFINITY="disabled"
+export KMP_LIBRARY=turnaround
+export KMP_SCHEDULE="static,balanced"
+export KMP_STACKSIZE=256M
+
+date 
+#ml purge
+#ml gcc
+
+#ml intel/2020.1
+#ml intel-mkl/2020.3.279-tbb
+
+### If restart, then "restart" and snapinit=55 and hydro_Snapshots_200_restart 
+### If not, then "start" and snapinit = 00 and hydro_Snapshots_200
+restart='restart'
+snapinit='56'
+sed -i "s/^int const input_grid.*/int const input_grid    = TRUE\; \/\/User\-defined input grid flag/" user_inputs.h
+sed -i "s/^const int snapinit.*/const int snapinit             = ${snapinit}\;/" user_inputs.h
+sed -i "s/^const char hydro_steps_file\[\].*/const char hydro_steps_file\[\]  = \".\/hydro_Snapshots_200_restart.txt\"\; /" user_inputs.h
+
+###const char start_file_init[]   = "./output_files/gas_z=dummy";
+###const char ray_file_init[]     = "./output_files/ray_z=dummy";
+##const char treion_file_init[]  = "./output_files/tre_z=dummy";
+
+
+### Change number of cells
+Ncell='400'
+###sed -i "s/^const char ugas_file_init\[\].*/const char ugas_file_init\[\] =\"\/home\/bwilson\/scratch4\-ansond\/chris\/P3M_Nbody\/subres_sources\/input_files_${Ncell}\/density.0${snapinit}.${Ncell}\"\;/" user_inputs.h
+sed -i "s/^const char ugas_file_init\[\].*/const char ugas_file_init\[\] =\"\/expanse\/lustre\/projects\/uot171\/bwils033\/FlexRT\/OTHER\/subres_sources\/input_files_${Ncell}\/density.0${snapinit}.${Ncell}\"\;/" user_inputs.h
+sed -i "s/^const char density_dir\[\].*/const char density_dir\[\] = \"input_files_${Ncell}\/\"\; \/\/BAYU folder might change/" user_inputs.h
+sed -i "s/^int const Nx.*/int const Nx      = ${Ncell}\; \/\/Number of grid points in the x direction/" user_inputs.h
+sed -i "s/^int const Ny.*/int const Ny      = ${Ncell}\; \/\/Number of grid points in the x direction/" user_inputs.h
+sed -i "s/^int const Nz.*/int const Nz      = ${Ncell}\; \/\/Number of grid points in the x direction/" user_inputs.h
+
+### Change source catalog, rapid25, veryrapid, maxrapid
+###source_tag='maxrapid'
+###source_catalog='ndot_catalogs_40_3e8_maxrapid' 
+source_tag='maxrapid'
+source_catalog='ndot_catalogs_40_3e8_maxrapid' 
+###sed -i "s/^const char source_field_init\[\].*/const char source_field_init\[\] = \"\/home\/bwilson\/scratch4\-ansond\/chris\/P3M_Nbody\/subres_sources\/${source_catalog}\/ndot_catalog_0${snapinit}\"\;  \/\/BAYU\: emissivity catalog, where source model\/ emissivity history is/" user_inputs.h
+###sed -i "s/^const char num_src_file_init\[\].*/const char num_src_file_init\[\] = \"\/home\/bwilson\/scratch4-ansond\/chris\/P3M_Nbody\/subres_sources\/${source_catalog}\/numhalos.0${snapinit}\"\;\/\/BAYU folder might change/" user_inputs.h
+sed -i "s/^const char source_field_init\[\].*/const char source_field_init\[\] = \"\/expanse\/lustre\/projects\/uot171\/bwils033\/FlexRT\/OTHER\/subres_sources\/${source_catalog}\/ndot_catalog_0${snapinit}\"\;  \/\/BAYU\: emissivity catalog, where source model\/ emissivity history is/" user_inputs.h
+sed -i "s/^const char num_src_file_init\[\].*/const char num_src_file_init\[\] = \"\/expanse\/lustre\/projects\/uot171\/bwils033\/FlexRT\/OTHER\/subres_sources\/${source_catalog}\/numhalos.0${snapinit}\"\;\/\/BAYU folder might change/" user_inputs.h
+
+sed -i "s/^const char source_dir\[\].*/const char source_dir\[\] = \"${source_catalog}\/\"\; \/\/BAYU folder might change/" user_inputs.h
+
+
+### change frequency (alpha) where frequency is [eV]/h_eV
+###freq_eV='\{14.48\/h\_eV, 16.7\/h\_eV, 20.03\/h\_eV, 25.78\/h\_eV, 39.23\/h\_eV\}'
+freq_eV='\{19\/h\_eV\}'
+freqtag='mono'
+Nfreq='1'
+alpha='1.5'
+###freq_eV='\{22.3\/h\_eV\}'
+sed -i "s/^int const Nfreq.*/int const Nfreq = ${Nfreq}\; \/\/Number of frequency bins /" user_inputs.h
+sed -i "s/^double const nu_phot\[Nfreq\].*/double const nu_phot\[Nfreq\] = ${freq_eV} \; \/\/Photon frequency (in Hz) \/\/BAYU: CHANGE THIS FOR DIFFERENT ALPHA /" user_inputs.h
+###sed -i "s/^double const nu_phot\[Nfreq\].*/double const nu_phot\[Nfreq\] = \{${freq_eV}\/h_eV\}\; \/\/Photon frequency (in Hz) \/\/BAYU: CHANGE THIS FOR DIFFERENT ALPHA /" user_inputs.h
+
+### change fesc (scaling for emissivity)
+fesc='1.5'
+sed -i "s/^float const fesc.*/float const fesc                = ${fesc}\;\/\/escape fraction for sources \/\/BAYU\: THIS IS f in the filename\./" user_inputs.h
+###sed -i "s/^const char output_dir\[\].*/const char output_dir\[\]      = \"\.\/output_files_f${fesc}\/\"\;/" user_inputs.h
+
+###sed -i "s/^const char otf_output\[\].*/const char otf_output\[\]      = \"output_files_f${fesc}\/otf_test_f${fesc}\.txt\"\; \/\/BAYU change for every run/" user_inputs.h
+
+### change speed of light
+cl_factor='0.3'
+sed -i "s/^float const cl_factor.*/float const cl_factor    = ${cl_factor}\; \/\/simulation speed of light \/ true speed of light /" user_inputs.h
+
+####clumping_factor='1.0'
+####sed -i "s/^float const const_clump.*/float const const_clump = ${clumping_factor}\; \/\/constant clumping factor \(in subgrid mode this scales down the MFP even more\) /" user_inputs.h
+
+
+rm -r output_files/${restart}_alpha${alpha}_${freqtag}Freq_${source_tag}_N${Ncell}_f${fesc}_cl${cl_factor}/
+mkdir output_files/${restart}_alpha${alpha}_${freqtag}Freq_${source_tag}_N${Ncell}_f${fesc}_cl${cl_factor}
+sed -i "s/^const char output_dir\[\].*/const char output_dir\[\]      = \"\.\/output_files\/${restart}_alpha${alpha}_${freqtag}Freq_${source_tag}_N${Ncell}_f${fesc}_cl${cl_factor}\/\"\;/" user_inputs.h
+sed -i "s/^const char otf_output\[\].*/const char otf_output\[\]      = \"output_files\/${restart}_alpha${alpha}_${freqtag}Freq_${source_tag}_N${Ncell}_f${fesc}_cl${cl_factor}\/otf\.txt\"\;/" user_inputs.h
+###\"output_files_f${fesc}\/otf_test_f${fesc}\.txt\"\; \/\/BAYU change for every run/" user_inputs.h
+
+make clean
+make
+./3d_radtransfer.x > dot_out/${restart}_alpha${alpha}_${freqtag}Freq_${source_tag}_N${Ncell}_f${fesc}_cl${cl_factor}.out
+
+date

@@ -1,0 +1,23 @@
+#!/bin/bash                    
+#SBATCH --job-name="extract_results"          
+#SBATCH --output="dot_out/extract_results%N.out"
+###SBATCH --account=TG-PHY210041
+#SBATCH --account=TG-PHY230158
+#SBATCH --partition=debug
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=1
+####SBATCH --mem=128Gb   
+#SBATCH --mem=20Gb   
+#SBATCH --export=ALL        
+#SBATCH -t 00:05:00   
+#SBATCH --mail-user=bwils033@ucr.edu
+#SBATCH --mail-type=all
+
+module load anaconda3/2021.05
+
+date
+echo "Running extract_results.py"
+python extract_results.py
+echo "extract_results.py complete"
+date
+
